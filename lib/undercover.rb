@@ -32,6 +32,11 @@ module Undercover
       @lcov = LcovParser.parse(File.open(opts.lcov))
       @code_dir = opts.path
       @changeset = changeset.update
+
+      workdir = Rugged::Repository.discover(code_dir).workdir
+      prefix = Pathname.new(code_dir).expand_path.relative_path_from(workdir).to_s
+      @prefix = prefix if prefix != '.'
+
       @loaded_files = {}
       @results = {}
     end
@@ -39,6 +44,9 @@ module Undercover
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
     def build
       changeset.each_changed_line do |filepath, line_no|
+        next unless filepath.start_with?(@prefix)
+        filepath = filepath.sub(/\A#{@prefix}\//, '')
+
         dist_from_line_no = lambda do |res|
           return BigDecimal::INFINITY if line_no < res.first_line
 
